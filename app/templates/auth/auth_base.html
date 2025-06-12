@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<style>
+.auth-container {
+    max-width: 450px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.auth-title {
+    font-size: 1.75rem;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+}
+
+.auth-subtitle {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}
+
+.auth-form .form-group {
+    margin-bottom: 1.25rem;
+}
+
+.auth-form .form-control {
+    height: 45px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    padding-left: 15px;
+}
+
+.auth-form .form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: #2c3e50;
+}
+
+.auth-actions {
+    margin-top: 1.5rem;
+}
+
+.auth-btn {
+    width: 100%;
+    height: 45px;
+    font-weight: 500;
+    border-radius: 4px;
+}
+
+.auth-footer {
+    margin-top: 1.5rem;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #7f8c8d;
+}
+
+.auth-link {
+    color: #3498db;
+    font-weight: 500;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #95a5a6;
+}
+
+.password-container {
+    position: relative;
+}
+
+.captcha-container {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.captcha-image {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+@media (max-width: 576px) {
+    .auth-container {
+        margin: 1rem;
+        padding: 1.5rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <!-- 认证头部 -->
+    <div class="auth-header">
+        <h1 class="auth-title">{% block auth_title %}{% endblock %}</h1>
+        <p class="auth-subtitle">{% block auth_subtitle %}{% endblock %}</p>
+    </div>
+
+    <!-- 闪存消息 -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="mb-4">
+                {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- 认证表单 -->
+    <form method="POST" class="auth-form" novalidate>
+        {% csrf_token %}
+        
+        {% block auth_form %}{% endblock %}
+        
+        <!-- 表单操作 -->
+        <div class="auth-actions">
+            <button type="submit" class="btn btn-primary auth-btn">
+                {% block submit_text %}提交{% endblock %}
+            </button>
+            {% block extra_actions %}{% endblock %}
+        </div>
+    </form>
+
+    <!-- 底部链接 -->
+    <div class="auth-footer">
+        {% block auth_footer %}{% endblock %}
+    </div>
+</div>
+
+<!-- 密码显示/隐藏切换脚本 -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 密码可见性切换
+    const togglePassword = (button, inputId) => {
+        const input = document.getElementById(inputId);
+        const icon = button.querySelector('i');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.replace('bi-eye', 'bi-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.replace('bi-eye-slash', 'bi-eye');
+        }
+    };
+
+    // 为所有密码字段添加切换按钮
+    document.querySelectorAll('.password-container input[type="password"]').forEach(input => {
+        const container = input.parentElement;
+        const toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.className = 'btn btn-link password-toggle';
+        toggleBtn.innerHTML = '<i class="bi bi-eye"></i>';
+        toggleBtn.onclick = () => togglePassword(toggleBtn, input.id);
+        container.appendChild(toggleBtn);
+    });
+
+    // 刷新验证码
+    document.querySelectorAll('.refresh-captcha').forEach(btn => {
+        btn.onclick = function() {
+            const captchaImg = document.getElementById('captcha-image');
+            captchaImg.src = '{{ url_for("auth.captcha") }}?t=' + new Date().getTime();
+        };
+    });
+});
+</script>
+{% endblock %}

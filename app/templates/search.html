@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}专利检索 - IDS系统{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item active" aria-current="page">专利检索</li>
+{% endblock %}
+
+{% block page_title %}专利检索{% endblock %}
+
+{% block page_actions %}
+<button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#searchHelpModal">
+    <i class="bi bi-question-circle"></i> 检索帮助
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <!-- 搜索表单 -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form id="searchForm" method="POST" action="{{ url_for('search.search') }}">
+                    <div class="input-group">
+                        <input type="text" 
+                               class="form-control form-control-lg" 
+                               name="patent_number" 
+                               id="patentNumber"
+                               placeholder="输入专利号 (如 CN109670517A、EP1234567)" 
+                               required
+                               value="{{ request.form.get('patent_number', '') }}">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-search"></i> 检索
+                        </button>
+                    </div>
+                    <div class="form-text mt-2">
+                        支持格式：中国(CN)、欧洲(EP)、美国(US)、PCT(WO)等专利号
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 实时检索结果 -->
+        <div id="liveResults" class="card mb-4" style="display: none;">
+            <div class="card-header">
+                <h5 class="mb-0">实时检索结果</h5>
+            </div>
+            <div class="card-body" id="apiResults">
+                <!-- 通过AJAX动态加载 -->
+            </div>
+        </div>
+
+        <!-- 最近检索记录 -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">最近检索记录</h5>
+            </div>
+            <div class="card-body">
+                <div id="recentSearches" class="list-group">
+                    <!-- 通过AJAX动态加载 -->
+                    <div class="text-center py-3">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 检索帮助模态框 -->
+<div class="modal fade" id="searchHelpModal" tabindex="-1" aria-labelledby="searchHelpLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="searchHelpLabel">专利检索帮助</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h6>支持的专利号格式：</h6>
+                <ul>
+                    <li><strong>中国专利</strong>: CN123456789A, CN123456789B</li>
+                    <li><strong>欧洲专利</strong>: EP1234567, EP1234567A1</li>
+                    <li><strong>美国专利</strong>: US12345678, US1234567A</li>
+                    <li><strong>PCT申请</strong>: WO123456789A1</li>
+                </ul>
+                <hr>
+                <h6>检索技巧：</h6>
+                <ol>
+                    <li>输入完整的专利号可获得最准确的结果</li>
+                    <li>系统会自动识别专利局代码和号码格式</li>
+                    <li>检索结果将自动保存到"我的提交"中</li>
+                </ol>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // 加载最近检索记录
+    function loadRecentSearches() {
+        $.get('/api/recent-searches', function(data) {
+            $('#recentSearches').empty();
+            if (data.length > 0) {
+                $.each(data, function(index, item) {
+                    $('#recentSearches').append(`
+                        <a href="/submissions/${item.id}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">${item.patent_number}</h6>
+                                <small class="text-muted">${item.date}</small>
+                            </div>
+                            <p class="mb-1">${item.title || '无标题'}</p>
+                        </a>
+                    `);
+                });
+            } else {
+                $('#recentSearches').append(`
+                    <div class="text-center py-3 text-muted">
+                        <i class="bi bi-info-circle"></i> 暂无最近检索记录
+                    </div>
+                `);
+            }
+        });
+    }
+
+    // 实时检索输入监听
+    $('#patentNumber').on('input', function() {
+        const query = $(this).val().trim();
+        if (query.length > 4) {
+            $.get('/api/search', {number: query}, function(data) {
+                if (data.error) {
+                    $('#liveResults').hide();
+                } else {
+                    $('#apiResults').html(`
+                        <div class="mb-3">
+                            <h5>${data.title_zh || data.title_en || '无标题'}</h5>
+                            <p class="text-muted mb-1">${data.patent_number}</p>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>申请人:</strong> ${data.applicants?.join(', ') || '未知'}</p>
+                                <p><strong>申请日:</strong> ${data.application_date || '未知'}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>发明人:</strong> ${data.inventors?.join(', ') || '未知'}</p>
+                                <p><strong>公开日:</strong> ${data.publication_date || '未知'}</p>
+                            </div>
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
+                            <button class="btn btn-primary me-md-2" onclick="document.getElementById('searchForm').submit()">
+                                <i class="bi bi-save"></i> 保存检索结果
+                            </button>
+                        </div>
+                    `);
+                    $('#liveResults').show();
+                }
+            }).fail(function() {
+                $('#liveResults').hide();
+            });
+        } else {
+            $('#liveResults').hide();
+        }
+    });
+
+    // 初始化加载
+    loadRecentSearches();
+});
+</script>
+{% endblock %}

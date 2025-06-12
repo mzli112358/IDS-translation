@@ -1,0 +1,175 @@
+{% extends "auth/auth_base.html" %}
+
+{% block auth_title %}创建新账号{% endblock %}
+
+{% block auth_subtitle %}注册账号以访问专利翻译系统{% endblock %}
+
+{% block auth_form %}
+    <!-- 用户名输入 -->
+    <div class="form-group mb-4">
+        <label for="username" class="form-label">用户名 *</label>
+        <input type="text" 
+               class="form-control" 
+               id="username" 
+               name="username" 
+               required
+               minlength="4"
+               maxlength="20"
+               pattern="[a-zA-Z0-9_]+"
+               autocomplete="username"
+               placeholder="4-20位字母、数字或下划线">
+        <div class="invalid-feedback">
+            用户名必须是4-20位的字母、数字或下划线
+        </div>
+    </div>
+    
+    <!-- 邮箱输入 -->
+    <div class="form-group mb-4">
+        <label for="email" class="form-label">邮箱 *</label>
+        <input type="email" 
+               class="form-control" 
+               id="email" 
+               name="email" 
+               required
+               autocomplete="email"
+               placeholder="请输入有效邮箱地址">
+        <div class="invalid-feedback">
+            请输入有效的邮箱地址
+        </div>
+    </div>
+    
+    <!-- 密码输入 -->
+    <div class="form-group mb-4 password-container">
+        <label for="password" class="form-label">密码 *</label>
+        <input type="password" 
+               class="form-control" 
+               id="password" 
+               name="password" 
+               required
+               minlength="8"
+               autocomplete="new-password"
+               placeholder="至少8位字符，包含大小写">
+        <div class="invalid-feedback">
+            密码需至少8位且包含大小写字母
+        </div>
+        <div class="password-strength mt-2">
+            <div class="progress" style="height: 4px;">
+                <div id="password-strength-bar" class="progress-bar" role="progressbar"></div>
+            </div>
+            <small id="password-strength-text" class="text-muted"></small>
+        </div>
+    </div>
+    
+    <!-- 确认密码 -->
+    <div class="form-group mb-4 password-container">
+        <label for="confirm_password" class="form-label">确认密码 *</label>
+        <input type="password" 
+               class="form-control" 
+               id="confirm_password" 
+               name="confirm_password" 
+               required
+               placeholder="再次输入密码">
+        <div class="invalid-feedback">
+            两次输入的密码不一致
+        </div>
+    </div>
+    
+    <!-- 真实姓名 -->
+    <div class="form-group mb-4">
+        <label for="full_name" class="form-label">真实姓名</label>
+        <input type="text" 
+               class="form-control" 
+               id="full_name" 
+               name="full_name" 
+               autocomplete="name"
+               placeholder="用于证书和发票">
+    </div>
+    
+    <!-- 用户协议 -->
+    <div class="form-group form-check mb-4">
+        <input type="checkbox" 
+               class="form-check-input" 
+               id="agree_terms" 
+               name="agree_terms" 
+               required>
+        <label class="form-check-label" for="agree_terms">
+            我已阅读并同意<a href="{{ url_for('main.terms') }}" target="_blank">《用户协议》</a>
+        </label>
+        <div class="invalid-feedback">
+            必须同意用户协议才能注册
+        </div>
+    </div>
+{% endblock %}
+
+{% block auth_footer %}
+    <div class="text-center mt-3">
+        已有账号？<a href="{{ url_for('auth.login') }}" class="auth-link">立即登录</a>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 密码强度检测
+    const passwordInput = document.getElementById('password');
+    const strengthBar = document.getElementById('password-strength-bar');
+    const strengthText = document.getElementById('password-strength-text');
+    
+    passwordInput.addEventListener('input', function() {
+        const password = this.value;
+        let strength = 0;
+        
+        // 长度检测
+        if (password.length >= 8) strength += 1;
+        if (password.length >= 12) strength += 1;
+        
+        // 复杂度检测
+        if (/[A-Z]/.test(password)) strength += 1;
+        if (/[0-9]/.test(password)) strength += 1;
+        if (/[^A-Za-z0-9]/.test(password)) strength += 1;
+        
+        // 更新UI
+        const width = strength * 20;
+        let color = 'bg-danger';
+        let text = '弱';
+        
+        if (strength >= 3) {
+            color = 'bg-warning';
+            text = '中等';
+        }
+        if (strength >= 5) {
+            color = 'bg-success';
+            text = '强';
+        }
+        
+        strengthBar.style.width = width + '%';
+        strengthBar.className = 'progress-bar ' + color;
+        strengthText.textContent = text;
+    });
+    
+    // 密码一致性验证
+    const confirmPassword = document.getElementById('confirm_password');
+    confirmPassword.addEventListener('input', function() {
+        if (this.value !== passwordInput.value) {
+            this.setCustomValidity('密码不一致');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+    
+    // 表单验证
+    const form = document.querySelector('.auth-form');
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    }, false);
+    
+    // 自动聚焦到用户名输入框
+    document.getElementById('username').focus();
+});
+</script>
+{% endblock %}

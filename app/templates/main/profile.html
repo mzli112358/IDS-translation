@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}个人资料 - IDS系统{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item active" aria-current="page">个人资料</li>
+{% endblock %}
+
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-center">
+    <span>个人资料</span>
+    <a href="{{ url_for('main.change_password') }}" class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-key"></i> 修改密码
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form method="POST" class="needs-validation" novalidate>
+                    {{ form.hidden_tag() }}
+
+                    <!-- 基本信息 -->
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3">
+                            <label for="username" class="form-label">
+                                <i class="bi bi-person-badge me-2"></i>用户名
+                            </label>
+                            <input type="text" class="form-control" 
+                                   value="{{ current_user.username }}" readonly>
+                            <small class="text-muted">用户名不可修改</small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">
+                                <i class="bi bi-envelope me-2"></i>邮箱 *
+                            </label>
+                            {{ form.email(class="form-control", required) }}
+                            {% for error in form.email.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ error }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- 个人信息 -->
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3">
+                            <label for="full_name" class="form-label">
+                                <i class="bi bi-card-heading me-2"></i>姓名
+                            </label>
+                            {{ form.full_name(class="form-control") }}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="department" class="form-label">
+                                <i class="bi bi-building me-2"></i>部门
+                            </label>
+                            {{ form.department(class="form-control") }}
+                        </div>
+                    </div>
+
+                    <!-- 联系方式 -->
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3">
+                            <label for="phone" class="form-label">
+                                <i class="bi bi-phone me-2"></i>联系电话
+                            </label>
+                            {{ form.phone(class="form-control") }}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="dingtalk" class="form-label">
+                                <i class="bi bi-chat-dots me-2"></i>钉钉账号
+                            </label>
+                            {{ form.dingtalk(class="form-control") }}
+                        </div>
+                    </div>
+
+                    <!-- 密码验证 -->
+                    <div class="mb-4">
+                        <label for="current_password" class="form-label">
+                            <i class="bi bi-shield-lock me-2"></i>当前密码 *
+                        </label>
+                        <div class="password-container">
+                            {{ form.current_password(
+                                class="form-control", 
+                                placeholder="修改信息需验证密码",
+                                required
+                            ) }}
+                            <button type="button" class="btn btn-link password-toggle">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        {% for error in form.current_password.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ error }}
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- 提交按钮 -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{{ url_for('main.home') }}" class="btn btn-outline-secondary me-md-2">
+                            <i class="bi bi-arrow-left me-2"></i>返回首页
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-2"></i>保存更改
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 账号信息 -->
+        <div class="card shadow-sm mt-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-info-circle me-2"></i>账号信息
+                </h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">注册时间</dt>
+                    <dd class="col-sm-8">{{ current_user.created_at.strftime('%Y-%m-%d %H:%M') }}</dd>
+
+                    <dt class="col-sm-4">最后登录</dt>
+                    <dd class="col-sm-8">
+                        {% if current_user.last_login %}
+                            {{ current_user.last_login.strftime('%Y-%m-%d %H:%M') }}
+                        {% else %}
+                            从未登录
+                        {% endif %}
+                    </dd>
+
+                    <dt class="col-sm-4">登录IP</dt>
+                    <dd class="col-sm-8">{{ current_user.last_login_ip or '未知' }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 密码可见性切换
+    document.querySelector('.password-toggle').addEventListener('click', function() {
+        const input = this.parentElement.querySelector('input');
+        const icon = this.querySelector('i');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.replace('bi-eye', 'bi-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.replace('bi-eye-slash', 'bi-eye');
+        }
+    });
+
+    // 表单验证
+    const form = document.querySelector('.needs-validation');
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    }, false);
+});
+</script>
+
+<style>
+.password-container {
+    position: relative;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 5;
+}
+
+.was-validated .form-control:invalid, 
+.form-control.is-invalid {
+    border-color: #dc3545;
+    padding-right: calc(1.5em + 0.75rem);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+dt {
+    font-weight: 500;
+    color: #6c757d;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+
+{% block title %}专利详情 #{{ submission.id }} - IDS系统{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">首页</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('main.submissions') }}">提交记录</a></li>
+<li class="breadcrumb-item active">专利详情</li>
+{% endblock %}
+
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-center">
+    <span>专利详情 #{{ submission.id }}</span>
+    <div>
+        <a href="{{ url_for('main.submissions') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> 返回列表
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- 主要信息列 -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-info-circle me-2"></i>基本信息
+                </h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-3">专利号</dt>
+                    <dd class="col-sm-9">{{ submission.patent_number }}</dd>
+
+                    <dt class="col-sm-3">中文标题</dt>
+                    <dd class="col-sm-9">{{ submission.title_zh or '--' }}</dd>
+
+                    <dt class="col-sm-3">英文标题</dt>
+                    <dd class="col-sm-9">{{ submission.title_en or '--' }}</dd>
+
+                    <dt class="col-sm-3">申请人</dt>
+                    <dd class="col-sm-9">
+                        {% if submission.applicants %}
+                            {{ submission.applicants|from_json|join(', ') }}
+                        {% else %}--{% endif %}
+                    </dd>
+
+                    <dt class="col-sm-3">发明人</dt>
+                    <dd class="col-sm-9">
+                        {% if submission.inventors %}
+                            {{ submission.inventors|from_json|join(', ') }}
+                        {% else %}--{% endif %}
+                    </dd>
+
+                    <dt class="col-sm-3">申请日</dt>
+                    <dd class="col-sm-9">{{ submission.application_date or '--' }}</dd>
+
+                    <dt class="col-sm-3">公开日</dt>
+                    <dd class="col-sm-9">{{ submission.publication_date or '--' }}</dd>
+
+                    <dt class="col-sm-3">IPC分类</dt>
+                    <dd class="col-sm-9">{{ submission.ipc or '--' }}</dd>
+
+                    <dt class="col-sm-3">当前状态</dt>
+                    <dd class="col-sm-9">
+                        <span class="badge rounded-pill bg-{{ submission.status|status_color }}">
+                            {{ submission.status|status_display }}
+                        </span>
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        <!-- 文件预览区 -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-file-earmark me-2"></i>文件预览
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="border rounded p-3 text-center">
+                            <i class="bi bi-file-earmark-pdf fs-1 text-danger"></i>
+                            <h6 class="mt-2">原始文件</h6>
+                            <p class="text-muted small mb-2">
+                                {{ submission.original_filename }}
+                            </p>
+                            <div class="btn-group">
+                                <a href="{{ url_for('main.download_file', id=submission.id, type='original') }}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-download"></i> 下载
+                                </a>
+                                <button class="btn btn-sm btn-outline-secondary" 
+                                        data-bs-toggle="modal" data-bs-target="#pdfPreviewModal">
+                                    <i class="bi bi-eye"></i> 预览
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% if submission.status == 'completed' %}
+                    <div class="col-md-6 mb-3">
+                        <div class="border rounded p-3 text-center">
+                            <i class="bi bi-file-earmark-word fs-1 text-primary"></i>
+                            <h6 class="mt-2">翻译结果</h6>
+                            <p class="text-muted small mb-2">
+                                {{ submission.patent_number }}_translated.docx
+                            </p>
+                            <a href="{{ url_for('main.download_file', id=submission.id, type='translated') }}" 
+                               class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-download"></i> 下载
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 操作列 -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-lightning-charge me-2"></i>快速操作
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    {% if submission.status == 'uploaded' %}
+                    <button class="btn btn-primary" id="startProcessBtn">
+                        <i class="bi bi-play-circle me-2"></i>开始处理
+                    </button>
+                    {% elif submission.status == 'parsed' %}
+                    <button class="btn btn-success" id="startTranslateBtn">
+                        <i class="bi bi-translate me-2"></i>开始翻译
+                    </button>
+                    {% elif submission.status == 'translated' %}
+                    <button class="btn btn-warning" id="reviewBtn">
+                        <i class="bi bi-check-circle me-2"></i>标记完成
+                    </button>
+                    {% endif %}
+
+                    <button class="btn btn-outline-danger" id="deleteBtn">
+                        <i class="bi bi-trash me-2"></i>删除记录
+                    </button>
+
+                    <a href="{{ url_for('main.create_report', id=submission.id) }}" 
+                       class="btn btn-outline-secondary">
+                        <i class="bi bi-file-earmark-text me-2"></i>生成报告
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 处理日志 -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-clock-history me-2"></i>处理日志
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="timeline">
+                    <div class="timeline-item {% if submission.status != 'uploaded' %}active{% endif %}">
+                        <div class="timeline-point"></div>
+                        <div class="timeline-content">
+                            <h6>文件上传</h6>
+                            <small class="text-muted">
+                                {{ submission.created_at|datetimeformat('%Y-%m-%d %H:%M') }}
+                            </small>
+                        </div>
+                    </div>
+                    <div class="timeline-item {% if submission.status in ['parsed','translated','completed'] %}active{% endif %}">
+                        <div class="timeline-point"></div>
+                        <div class="timeline-content">
+                            <h6>专利解析</h6>
+                            <small class="text-muted">
+                                {% if submission.parsed_at %}
+                                    {{ submission.parsed_at|datetimeformat('%Y-%m-%d %H:%M') }}
+                                {% else %}待处理{% endif %}
+                            </small>
+                        </div>
+                    </div>
+                    <div class="timeline-item {% if submission.status in ['translated','completed'] %}active{% endif %}">
+                        <div class="timeline-point"></div>
+                        <div class="timeline-content">
+                            <h6>翻译完成</h6>
+                            <small class="text-muted">
+                                {% if submission.translated_at %}
+                                    {{ submission.translated_at|datetimeformat('%Y-%m-%d %H:%M') }}
+                                {% else %}待处理{% endif %}
+                            </small>
+                        </div>
+                    </div>
+                    <div class="timeline-item {% if submission.status == 'completed' %}active{% endif %}">
+                        <div class="timeline-point"></div>
+                        <div class="timeline-content">
+                            <h6>审核完成</h6>
+                            <small class="text-muted">
+                                {% if submission.completed_at %}
+                                    {{ submission.completed_at|datetimeformat('%Y-%m-%d %H:%M') }}
+                                {% else %}待处理{% endif %}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PDF预览模态框 -->
+<div class="modal fade" id="pdfPreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">PDF预览 - {{ submission.patent_number }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="ratio ratio-1x1">
+                    <iframe src="{{ url_for('main.preview_pdf', id=submission.id) }}" 
+                            style="border: none;"></iframe>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="{{ url_for('main.download_file', id=submission.id, type='original') }}" 
+                   class="btn btn-primary">
+                    <i class="bi bi-download me-2"></i>下载文件
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">确认删除</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除此专利记录吗？所有关联文件也将被永久删除。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">确认删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+$(document).ready(function() {
+    // 删除确认
+    $('#deleteBtn').click(function() {
+        $('#deleteModal').modal('show');
+    });
+
+    $('#confirmDelete').click(function() {
+        $.ajax({
+            url: '{{ url_for("main.delete_submission", id=submission.id) }}',
+            method: 'DELETE',
+            success: function() {
+                window.location.href = '{{ url_for("main.submissions") }}';
+            },
+            error: function(xhr) {
+                alert('删除失败: ' + xhr.responseText);
+            }
+        });
+    });
+
+    // 开始处理
+    $('#startProcessBtn').click(function() {
+        processStep('parse');
+    });
+
+    // 开始翻译
+    $('#startTranslateBtn').click(function() {
+        processStep('translate');
+    });
+
+    // 标记完成
+    $('#reviewBtn').click(function() {
+        processStep('complete');
+    });
+
+    function processStep(action) {
+        const btn = $('#' + action + 'Btn');
+        btn.prop('disabled', true);
+        btn.html('<span class="spinner-border spinner-border-sm" role="status"></span> 处理中...');
+
+        $.post('{{ url_for("main.process_submission", id=submission.id) }}', {
+            action: action
+        }, function() {
+            window.location.reload();
+        }).fail(function(xhr) {
+            alert('操作失败: ' + xhr.responseText);
+            btn.prop('disabled', false);
+            btn.html(action === 'parse' ? '<i class="bi bi-play-circle me-2"></i>开始处理' : 
+                    action === 'translate' ? '<i class="bi bi-translate me-2"></i>开始翻译' :
+                    '<i class="bi bi-check-circle me-2"></i>标记完成');
+        });
+    }
+});
+</script>
+
+<style>
+/* 时间线样式 */
+.timeline {
+    position: relative;
+    padding-left: 1rem;
+}
+
+.timeline-item {
+    position: relative;
+    padding-bottom: 1.5rem;
+    padding-left: 1.5rem;
+}
+
+.timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.timeline-point {
+    position: absolute;
+    left: 0;
+    top: 0.25rem;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+    background-color: #dee2e6;
+}
+
+.timeline-item.active .timeline-point {
+    background-color: #0d6efd;
+}
+
+.timeline-content {
+    padding-top: 0.25rem;
+}
+
+/* 响应式调整 */
+@media (max-width: 992px) {
+    .timeline {
+        padding-left: 0;
+    }
+    .timeline-item {
+        padding-left: 1rem;
+    }
+}
+</style>
+{% endblock %}

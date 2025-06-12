@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}专利翻译系统 - 首页{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- 欢迎横幅 -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="p-5 bg-light rounded-3">
+                <div class="container-fluid py-5">
+                    <h1 class="display-5 fw-bold">
+                        <i class="bi bi-translate text-primary"></i> IDS专利翻译系统
+                    </h1>
+                    <p class="col-md-8 fs-4">
+                        专业高效的专利文档翻译与管理平台，支持多国语言互译和智能解析
+                    </p>
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('search.search') }}" class="btn btn-primary btn-lg">
+                            <i class="bi bi-search me-2"></i>专利检索
+                        </a>
+                        <a href="{{ url_for('upload.upload') }}" class="btn btn-outline-primary btn-lg">
+                            <i class="bi bi-upload me-2"></i>文件上传
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 功能卡片 -->
+    <div class="row g-4 mb-5">
+        <!-- 快速检索 -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="bi bi-search-heart fs-1 text-primary"></i>
+                    <h3 class="card-title mt-3">专利检索</h3>
+                    <p class="card-text">通过专利号快速查询全球专利数据</p>
+                    <a href="{{ url_for('search.search') }}" class="btn btn-outline-primary">
+                        开始检索 <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 文件上传 -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="bi bi-file-earmark-arrow-up fs-1 text-success"></i>
+                    <h3 class="card-title mt-3">文件上传</h3>
+                    <p class="card-text">上传PDF或Word文档自动解析专利信息</p>
+                    <a href="{{ url_for('upload.upload') }}" class="btn btn-outline-success">
+                        上传文件 <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 我的提交 -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="bi bi-collection fs-1 text-info"></i>
+                    <h3 class="card-title mt-3">我的工作区</h3>
+                    <p class="card-text">查看历史提交记录和翻译结果</p>
+                    <a href="{{ url_for('main.submissions') }}" class="btn btn-outline-info">
+                        查看记录 <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 最近活动 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clock-history text-primary me-2"></i>最近活动
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group" id="recentActivities">
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+$(document).ready(function() {
+    // 加载最近活动
+    function loadRecentActivities() {
+        $.get('/api/recent-activities', function(data) {
+            $('#recentActivities').empty();
+            if (data.length > 0) {
+                data.forEach(item => {
+                    let icon = '';
+                    let color = '';
+                    if (item.type === 'search') {
+                        icon = 'bi-search';
+                        color = 'primary';
+                    } else if (item.type === 'upload') {
+                        icon = 'bi-upload';
+                        color = 'success';
+                    } else {
+                        icon = 'bi-file-text';
+                        color = 'info';
+                    }
+
+                    $('#recentActivities').append(`
+                        <a href="${item.link}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <div>
+                                    <i class="bi ${icon} text-${color} me-2"></i>
+                                    <strong>${item.title}</strong>
+                                </div>
+                                <small class="text-muted">${item.time}</small>
+                            </div>
+                            <small class="text-muted">${item.description}</small>
+                        </a>
+                    `);
+                });
+            } else {
+                $('#recentActivities').append(`
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-info-circle fs-4"></i>
+                        <p class="mt-2">暂无最近活动记录</p>
+                    </div>
+                `);
+            }
+        });
+    }
+
+    // 初始化加载
+    loadRecentActivities();
+});
+</script>
+
+<style>
+.card {
+    transition: transform 0.2s;
+}
+.card:hover {
+    transform: translateY(-5px);
+}
+</style>
+{% endblock %}
